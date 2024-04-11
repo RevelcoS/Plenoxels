@@ -23,21 +23,28 @@ namespace render {
 ///////////////////////////////////////////
 
 // Calculate pixel at the given image coord
+
+#include <iostream>
 void render::pixel(Image2D<float4> &image, int2 coord) {
     static const float AR = float(constants::width) / constants::height;
+
+    float w = scene::camera->focal;
+    float h = w / AR;
 
     float u = (coord.x + 0.5) / constants::width;
     float v = (coord.y + 0.5) / constants::height;
 
-    float x = lerp( -AR/2, AR/2, u);
-    float y = lerp( (float)1/2, (float)-1/2, v);
+    float x = lerp( -w/2, w/2, u);
+    float y = lerp( (float)h/2, (float)-h/2, v);
     float z = -1.0f;
     float3 ray = normalize( float3(x, y, z) );
+    ray = scene::camera->view(ray, false);
 
     float3 position = float3(0.0f);
+    position = scene::camera->view(position);
 
     float3 color = scene::raymarch(position, ray);
-    image[coord] = float4(color.x, color.y, color.z, 1.0f);
+    image[coord] = to_float4(color, 1.0f);
 }
 
 void render::CPU(Image2D<float4> &image) {

@@ -19,7 +19,7 @@ int main() {
 
     // Load scene
     std::cout << "...Loading scene" << std::endl;
-    scene::load("assets/model.dat");
+    scene::load("assets/model.dat", "scene/camera.txt");
 
     /// CPU ///
     std::cout << "...Rendering" << std::endl;

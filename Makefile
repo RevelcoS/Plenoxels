@@ -96,4 +96,4 @@ cleansrc:
 # For fun
 .PHONY: lines
 lines:
-	wc -l source/*.cpp source/include/*.h source/shaders/* scene/objects.txt Makefile README.md .gitignore
+	wc -l source/*.cpp source/include/*.h Makefile README.md .gitignore
