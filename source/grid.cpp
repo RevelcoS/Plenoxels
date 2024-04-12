@@ -10,68 +10,8 @@
 
 using namespace LiteMath;
 
-// https://github.com/sarafridov/plenoxels/blob/main/sh.py
-/*
-static float3 evalsh(float3 sh[constants::shsize], float3 normal) {
-    static float C0 = 0.28209479177387814;
-    static float C1 = 0.4886025119029199;
-    static float C2[5] = {
-        1.0925484305920792,
-        -1.0925484305920792,
-        0.31539156525252005,
-        -1.0925484305920792,
-        0.5462742152960396
-    };
-
-    float x = normal.x;
-    float y = normal.y;
-    float z = normal.z;
-
-    float3 result = C0 * sh[0];
-    result = (result -
-            C1 * y * sh[1] +
-            C1 * z * sh[2] -
-            C1 * x * sh[3]);
-
-    float xx = x * x, yy = y * y, zz = z * z;
-    float xy = x * y, yz = y * z, xz = x * z;
-    result = (result +
-            C2[0] * xy * sh[4] +
-            C2[1] * yz * sh[5] +
-            C2[2] * (2.0 * zz - xx - yy) * sh[6] +
-            C2[3] * xz * sh[7] +
-            C2[4] * (xx - yy) * sh[8]);
-
-    return max(result, float3(0.0f));
-}*/
-
-/*
-// https://github.com/nicknikolov/glsl-sh/blob/master/index.glsl
-static float evalsh(float sh[constants::shsize], float3 normal) {
-    float x = normal.x;
-    float y = normal.y;
-    float z = normal.z;
-
-    float result = (
-        sh[0] +
-
-        sh[1] * x +
-        sh[2] * y +
-        sh[3] * z +
-
-        sh[4] * z * x +
-        sh[5] * y * z +
-        sh[6] * y * x +
-        sh[7] * (3.0 * z * z - 1.0) +
-        sh[8] * (x*x - y*y)
-    );
-
-    return max(result, 0.0f);
-}
-*/
-
 // From Mitsuba 3
-static void evalsh2(const float3 &d, float *out) {
+static void shcoeffs(const float3 &d, float *out) {
     float x = d.x, y = d.y, z = d.z, z2 = z * z;
     float c0, c1, s0, s1, tmp_a, tmp_b, tmp_c;
 
@@ -95,13 +35,13 @@ static void evalsh2(const float3 &d, float *out) {
     out[4] = tmp_c * s1;
 }
 
-static float evalsh(float* sh, float3 rayDir) {
-    float sh_coeffs[constants::shsize];
-    evalsh2(rayDir, sh_coeffs);
+static float evalsh(float* sh, float3 normal) {
+    float coeffs[constants::shsize];
+    shcoeffs(normal, coeffs);
 
     float sum = 0.0f;
     for (int i = 0; i < constants::shsize; i++)
-    sum += sh[i] * sh_coeffs[i];
+        sum += sh[i] * coeffs[i];
 
     return sum;
 }
@@ -136,7 +76,41 @@ float2 Grid::intersection(float3 position, float3 ray) {
 // Returns color and density
 float4 Grid::evaluate(float3 position, float3 ray) {
     int3 coord = this->coord(position);
-    Cell cell = this->get(coord);
+    int3 xoff = int3(1, 0, 0);
+    int3 yoff = int3(0, 1, 0);
+    int3 zoff = int3(0, 0, 1);
+
+    float3 p0 = this->position(coord);
+    float3 p1 = this->position(coord + xoff + yoff + zoff);
+    float3 sample = (position - p0) / (p1 - p0);
+
+    float4 c000 = this->get(coord, ray);
+    float4 c001 = this->get(coord + zoff, ray);
+    float4 c010 = this->get(coord + yoff, ray);
+    float4 c011 = this->get(coord + yoff + zoff, ray);
+    float4 c100 = this->get(coord + xoff, ray);
+    float4 c101 = this->get(coord + xoff + zoff, ray);
+    float4 c110 = this->get(coord + xoff + yoff, ray);
+    float4 c111 = this->get(coord + xoff + yoff + zoff, ray);
+
+    float4 c00 = c000 * (1 - sample.x) + c100 * sample.x;
+    float4 c01 = c001 * (1 - sample.x) + c101 * sample.x;
+    float4 c10 = c010 * (1 - sample.x) + c110 * sample.x;
+    float4 c11 = c011 * (1 - sample.x) + c111 * sample.x;
+
+    float4 c0 = c00 * (1 - sample.y) + c10 * sample.y;
+    float4 c1 = c01 * (1 - sample.y) + c11 * sample.y;
+
+    float4 c = c0 * (1 - sample.z) + c1 * sample.z;
+    return c;
+}
+
+float4 Grid::get(int3 coord, float3 ray) {
+    int index = constants::grid * constants::grid * coord.z + constants::grid * coord.y + coord.x;
+    if (index > constants::total)
+        return float4(0.0f);
+
+    Cell cell = this->cells[index];
 
     float r = evalsh(cell.shr, ray);
     float g = evalsh(cell.shg, ray);
@@ -146,9 +120,9 @@ float4 Grid::evaluate(float3 position, float3 ray) {
     return to_float4(color, cell.density);
 }
 
-Cell Grid::get(int3 coord) {
-    int index = constants::grid * constants::grid * coord.z + constants::grid * coord.y + coord.x;
-    return this->cells[index];
+float3 Grid::position(int3 coord) {
+    float3 sample = float3(coord) / constants::grid;
+    return minPoint + (maxPoint - minPoint) * sample;
 }
 
 int3 Grid::coord(float3 position) {

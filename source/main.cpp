@@ -27,7 +27,7 @@ int main() {
     std::chrono::duration<double> duration;
 
     start = std::chrono::system_clock::now();
-    render::CPU(CPUimage);
+    //render::CPU(CPUimage);
     end = std::chrono::system_clock::now();
     duration = end - start;
     std::cout << "Render with CPU (1 thread):\t" << duration.count() << "s" << std::endl;

@@ -16,7 +16,8 @@ struct Grid {
 
     float2 intersection(float3 position, float3 ray);
     float4 evaluate(float3 position, float3 ray);
-    Cell get(int3 coord);
+    float4 get(int3 coord, float3 ray);
+    float3 position(int3 coord);
     static int3 coord(float3 position);
     void load(const char *path);
 };
