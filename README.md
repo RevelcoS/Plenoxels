@@ -2,7 +2,7 @@
 
 Volumetric rendering using ReLU fields.  
 
-![Rendered on CPU](https://github.com/RevelcoS/Plenoxels/raw/master/out_cpu.png)
+![Rendered on CPU](https://github.com/RevelcoS/Plenoxels/raw/main/out_cpu.png)
 
 ## Features
 
